@@ -36,8 +36,8 @@ __build : $(subdir-y) built-in.o
 $(subdir-y):
 	make -C $@ -f $(TOPDIR)/Makefile.build
 
-built-in.o : $(cur_objs) $(subdir_objs)
-	$(LD) -r -o $@ $^
+built-in.o : $(subdir-y) $(cur_objs)
+	$(LD) -r -o $@ $(cur_objs) $(subdir_objs)
 
 dep_file = .$@.d
 

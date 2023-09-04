@@ -1,5 +1,5 @@
 
-CROSS_COMPILE = 
+CROSS_COMPILE = /home/book/Desktop/opensdk_release/fib_tools/gcc-4.9.4_thumb_linux/usr/bin/arm-buildroot-linux-uclibcgnueabi-
 AS		= $(CROSS_COMPILE)as
 LD		= $(CROSS_COMPILE)ld
 CC		= $(CROSS_COMPILE)gcc
@@ -24,12 +24,16 @@ export CFLAGS LDFLAGS
 TOPDIR := $(shell pwd)
 export TOPDIR
 
-TARGET := test
+TARGET := my_test
 
+SRCS_FILES=$(wildcard *.c)
+OBJS_FILES=$(SRCS_FILES:.c=.o)
+obj-y += $(OBJS_FILES)
 
-obj-y += main.o
-obj-y += sub.o
-obj-y += a/
+MY_SUBDIRS:=$(filter-out include/,$(foreach f, $(notdir \
+  $(filter-out ./ , $(shell find ./ -maxdepth 1 -type d))), $(f)/))
+obj-y+=$(MY_SUBDIRS)
+
 
 
 all : start_recursive_build $(TARGET)
@@ -38,7 +42,7 @@ all : start_recursive_build $(TARGET)
 start_recursive_build:
 	make -C ./ -f $(TOPDIR)/Makefile.build
 
-$(TARGET) : built-in.o
+$(TARGET_EXE) : start_recursive_build
 	$(CC) -o $(TARGET) built-in.o $(LDFLAGS)
 
 clean:
