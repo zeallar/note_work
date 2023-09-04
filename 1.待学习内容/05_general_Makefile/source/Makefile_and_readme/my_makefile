@@ -5,4 +5,4 @@ MY_SUBDIRS:=$(filter-out include/,$(foreach f, $(notdir \
 MY_SUBDIRS+=b/
 all:
 	@echo "MY_SUBDIRS" $(MY_SUBDIRS)
-	@echo "OBJS_FILES" $(OBJS_FILES)
+	@echo "OBJS_FILES" $(OBJS_FILES)  
