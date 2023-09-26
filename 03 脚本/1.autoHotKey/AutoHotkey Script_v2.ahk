@@ -29,3 +29,7 @@ modified date:
 {
 SendInput FormatTime(, "M/d/yyyy h:mm tt")  ;  看起来会像 9/1/2005 3:53 PM 这样
 }
+;运行git
+!g::{
+    run "E:\myNote\note_work\autogit.bat"
+}

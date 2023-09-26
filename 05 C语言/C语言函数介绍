@@ -1,0 +1,37 @@
+### 1、extern
+
+1、extern做变量声明
+
+声明extern关键字的全局变量和函数可以使得它们能够跨文件被访问。
+
+**声明和定义**
+
+externint a; //属于声明 
+
+externint a = 10; //属于定义，同下
+
+extern char g_str[]="123456";//这个时候相当于没有extern
+
+如果在一个文件里定义了char g_str[] = "123456";在另外一个文件中必须使用extern char g_str[ ];来声明。不能使用extern char* g_str;来声明。extern是严格的声明。且extern char* g_str只是声明的一个全局字符指针。
+
+注：声明可以拷贝n次，但是定义只能定义一次。
+————————————————
+版权声明：本文为CSDN博主「奔跑的小河」的原创文章，遵循CC 4.0 BY-SA版权协议，转载请附上原文出处链接及本声明。
+原文链接：https://blog.csdn.net/z702143700/article/details/46805241
+
+### 2、uid_t getuid(void);
+
+uid_t定义在头文件sys/types.h中，它通常是一个小整形。函数返回一个调用程序的真实用户ID，一般来说，这个函数都是会调用成功的。
+
+### 3、va_list语法
+
+https://blog.csdn.net/qq_35905572/article/details/110160137
+
+2.1 vsprintf格式化函数的应用 https://blog.csdn.net/qq_38255284/article/details/117218520
+
+
+
+
+
+
+
