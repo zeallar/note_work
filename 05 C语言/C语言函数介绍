@@ -29,9 +29,26 @@ https://blog.csdn.net/qq_35905572/article/details/110160137
 
 2.1 vsprintf格式化函数的应用 https://blog.csdn.net/qq_38255284/article/details/117218520
 
+#### 4、信号量
 
+```c
+/*若信号量已存在,则打开,否则创建新的*/
+int semCreate_new(key_t key, int number_of_sem)
+{
+  int semid;
 
+  if( (semid = semget(key,number_of_sem,IPC_CREAT|IPC_EXCL|0600)) == -1){
+		semid=semget((key_t)key,number_of_sem,0600);
+                if(semid==-1) //全新创建失败,获取已经存在的信号量
+                {
+                        perror("semget error");
+                }
+  	}
+  return semid;
+}
+```
 
+https://github.com/dinkelk/linux-ipc-wrappers/blob/master/examples/SemaphoreWrapperTest.c
 
 
 
