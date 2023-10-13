@@ -33,8 +33,8 @@
     "apn": "CMIOTGDHZA.GD",
     "operator": "CHINA MOBILE(CMCC)",   // 运营商
     "lteBands": "B2/B3",   // 支持的 LTE 频段
-    "lteStatus": "service available", // LTE 网络状态
-    "txPower": 0,   // 发射功率 (dBm)
+    "lteStatus": "service available", // LTE 网络状态 //add to config
+    "txPower": 0,   // 发射功率 (dBm) 	//at 获取
     "pCID": 0,      // network physical cell id
     "cid": 0,       // Cell ID for the registered 3GPP system
     "mcc": "460",   // Mobile country code
@@ -77,10 +77,10 @@
 {"ac": "getinfo","val": 5}  // APN 配置信息
 {"ac":"getinfo","val":5,"code":0,"info":{"name":"CMIOTGDHZA.GD","user":"","passwd":""}}
 
-{"ac": "getinfo","val": 6}  // ntp 配置信息
-{"ac":"getinfo","val":6,"code":0,"info":{"primary":"172.16.13.32","second":"172.16.13.33","interval":60,"timezone":4}}
+{"ac": "getinfo","val": 6}  // ntp 配置信息 //自己移植库
+{"ac":"getinfo","val":6,"code":0,"info":{"primary":"172.16.13.32","second":"172.16.13.33","interval":60,"timezone":4}}//interval min ,timezone 8 add to config
 
-{"ac": "getinfo","val": 7}  // trap 配置
+{"ac": "getinfo","val": 7}  // trap 配置  //不做
 {
   "ac": "getinfo",
   "val": 7,
