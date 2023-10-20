@@ -18,7 +18,7 @@
     "ccid": "898604C0192270201771",
     "imsi": "460084043701771",
     "imei": "861307060215453",
-    "sn": "",
+    "sn": "BG09PM001N",
     "model": "DT3400-SM"
   }
 }
@@ -120,7 +120,7 @@
     "schedule": 30
   }
 }
-
+//to do at command
 {
     "ac": "set",
     "op": "sn",
@@ -131,7 +131,7 @@
         "hver": 1
     }
 }
-
+//to do  at command
 {
   "ac": "set",
   "op": "apn",
@@ -141,7 +141,7 @@
     "passwd": "xxxx" // 密码
   }
 }
-
+//ok
 {
   "ac": "set",
   "op": "ntp",
@@ -155,7 +155,7 @@
 
 {
   "ac": "set",
-  "op": "snmp",
+  "op": "snmp", ////不做
   "val": {
     "ip": "172.16.225.25", // trap 服务器ip
     "port": 666, // trap 服务器端口
@@ -163,15 +163,15 @@
     "trig": 1 // 触发标志位 (只有在启用 trap 并且触发标志位为 1 时才会自动上报 trap)
   }
 }
-
+//how to do 
 {
   "ac": "set",
   "op": "link",
   "val": "7F00000000..." // 电表测试的 HEX 指令
 }
-
+//to do. what is logic?
 { "ac": "set", "op": "bin", "val": 0 }
-
+//to do 
 {
   "ac": "set",
   "op": "update",
@@ -181,9 +181,9 @@
     "model": "xxxx" // 型号
   }
 }
-
+//ok
 { "ac": "set", "op": "restart" }
-
+//to do 
 { "ac": "set", "op": "restore" }
 
 ```
