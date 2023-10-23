@@ -125,9 +125,9 @@
     "ac": "set",
     "op": "sn",
     "val": {
-        "model": "DT3400-SM",
-        "sn": "xxxx",
-        "key": "b8e774f281c81e931b1f3a3a56ee5f42",
+        "model": "DT3400-SM",\\--
+        "sn": "xxxx",\\--
+        "key": "b8e774f281c81e931b1f3a3a56ee5f42",\\--
         "hver": 1
     }
 }
@@ -136,9 +136,9 @@
   "ac": "set",
   "op": "apn",
   "val": {
-    "name": "xxxx", // apn 名称
-    "user": "xxxx", // 用户名
-    "passwd": "xxxx" // 密码
+    "name": "xxxx", // apn 名称\\--
+    "user": "xxxx", // 用户名\\--
+    "passwd": "xxxx" // 密码\\--
   }
 }
 //ok
@@ -163,7 +163,7 @@
     "trig": 1 // 触发标志位 (只有在启用 trap 并且触发标志位为 1 时才会自动上报 trap)
   }
 }
-//how to do 
+//how to do //不做
 {
   "ac": "set",
   "op": "link",
@@ -176,7 +176,7 @@
   "ac": "set",
   "op": "update",
   "val": {
-    "url": "http://xxxx:xx/xxx/xx.bin", //下载地址
+    "url": "http://xxxx:xx/xxx/xx.bin", //下载地址172.16.225.25/appname
     "ver": 2, //版本
     "model": "xxxx" // 型号
   }
@@ -184,7 +184,7 @@
 //ok
 { "ac": "set", "op": "restart" }
 //to do 
-{ "ac": "set", "op": "restore" }
+{ "ac": "set", "op": "restore" }//恢复配置文件
 
 ```
 
