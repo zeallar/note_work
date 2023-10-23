@@ -1,0 +1,6 @@
+{
+    "files.associations": {
+        "com_utils.h": "c",
+        "main.h": "c"
+    }
+}
