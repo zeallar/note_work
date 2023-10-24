@@ -1,6 +1,6 @@
 #ifndef NTPCLIENT_H
 #define NTPCLIENT_H
-#define ENABLE_DEBUG
+//#define ENABLE_DEBUG
 /* when present, debug is a true global */
 #ifdef ENABLE_DEBUG
 extern int debug;

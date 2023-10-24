@@ -1,3 +1,7 @@
+
+#include<fcntl.h>
+#include<unistd.h>
+
 #include "ini.h"
 #include <errno.h>
 #include <string.h>
@@ -17,6 +21,8 @@ char sub_topic[64];
 global_tcp_config_t global_tcp_config_s={0};
 /*ntp_config variable*/
 global_ntp_config_t global_ntp_config_s={0};
+void init_ini();
+void load_config();
 
 void check_value(void* text,int type,int n){
 	if(type){
@@ -28,10 +34,39 @@ void check_value(void* text,int type,int n){
 		printlogf(LOG_DEBUG, "%d\n", (int*)text);
 		}
 	}
-	
-	
 }
+void open_ini(){
+	FILE *fp = fopen(MDTU_COM_CONFIG_PATH, "r");
+	if (fp == NULL) {
+		init_ini();
+	}
+	load_config();
+}
+void init_ini(){
+	long n;
+	
+	int fd;
+	fd = open(MDTU_COM_CONFIG_PATH, O_RDWR|O_CREAT, 0777);
+	n = ini_puts("mqtt_sub_pub", "pub_first", "topic1", MDTU_COM_CONFIG_PATH);
+	n = ini_puts("mqtt_sub_pub", "sub_first", "topic1", MDTU_COM_CONFIG_PATH);
+	
+	n = ini_puts("mqtt_sign_info", "clientid", "123456", MDTU_COM_CONFIG_PATH);
+	n = ini_puts("mqtt_sign_info", "username", "08818bb8", MDTU_COM_CONFIG_PATH);
+	n = ini_puts("mqtt_sign_info", "password", "50ba03ecd0c86bea", MDTU_COM_CONFIG_PATH);
+	n = ini_puts("mqtt_sign_info", "host", "172.16.225.24", MDTU_COM_CONFIG_PATH);
+	n = ini_puts("mqtt_sign_info", "port", "1883", MDTU_COM_CONFIG_PATH);
 
+	n = ini_putl("tcp_server", "bin", 0, MDTU_COM_CONFIG_PATH);
+	n = ini_putl("tcp_server", "port", 4059, MDTU_COM_CONFIG_PATH);
+	n = ini_putl("tcp_server", "timeout", 120, MDTU_COM_CONFIG_PATH);
+	n = ini_putl("tcp_server", "tcptmr", 0, MDTU_COM_CONFIG_PATH);
+	n = ini_putl("tcp_server", "schedule", 0, MDTU_COM_CONFIG_PATH);
+
+	n = ini_puts("ntp_config", "primary_ip", "172.16.13.32", MDTU_COM_CONFIG_PATH);
+	n = ini_puts("ntp_config", "second_ip", "172.16.13.33", MDTU_COM_CONFIG_PATH);
+	n = ini_putl("tcp_server", "interval", 60, MDTU_COM_CONFIG_PATH);
+	n = ini_putl("tcp_server", "timezone", 8, MDTU_COM_CONFIG_PATH);
+}	
 void load_config(){
 	char str[100];
 	long n;

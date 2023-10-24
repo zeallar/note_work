@@ -625,7 +625,7 @@ void ntp_operate(char * hos)
 	//-s set_clock   1
 	//-x cross_check 1
 	ntpc.probe_count = 1;
-	debug = 1;
+	//debug = 1;
 	hostname = hos;
 	ntpc.cycle_time = 5;
 	(ntpc.set_clock)++;
@@ -639,7 +639,7 @@ void ntp_operate(char * hos)
 		ntpc.cycle_time = MIN_INTERVAL;
 	}
  
-		printf("Configuration:\n"
+		/*printf("Configuration:\n"
 		"  -c probe_count %d\n"
 		"  -d (debug)     %d\n"
 		"  -g goodness    %d\n"
@@ -652,7 +652,7 @@ void ntp_operate(char * hos)
 		"  -x cross_check %d\n",
 		ntpc.probe_count, debug, ntpc.goodness,
 		hostname, ntpc.cycle_time, ntpc.live, udp_local_port, min_delay,
-		ntpc.set_clock, ntpc.cross_check );
+		ntpc.set_clock, ntpc.cross_check );*/
  
 	/* Startup sequence */
 	if ((usd=socket(AF_INET,SOCK_DGRAM,IPPROTO_UDP))==-1)

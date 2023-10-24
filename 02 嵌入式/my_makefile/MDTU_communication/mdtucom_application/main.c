@@ -24,10 +24,13 @@ modified date:
 #include "com_log.h"
 #include "com_network.h"
 #include "com_config.h"
+#include "thread_usb.h"
 /*mqtt tcp op thread*/
 threadpool op_thpool = NULL;
 pthread_t tcp_th;
 pthread_t mqtt_th;
+pthread_t usb_th;
+
 extern volatile int mqtt_connecting;
 /*main variable*/
 volatile int app_running=1;
@@ -148,11 +151,12 @@ int main(int argc, char *argv[]) {
 	init_log_param(argc, argv);
 	printlogf(LOG_NOTICE,"%s version:%d , started with loglevel %s.\n", argv[0],FIRMWARE_VERSION, LevelAry[LogLevel]);
 	/*0.读取配置文件*/
-	load_config();
+	open_ini();
 	/*1.开发板联网*/
 	ret=init_board_network();
 	/*info get/set,初始化耗时线程,为避免频繁开关线程，影响程序性能，这里采用线程池实现*/
 	op_thpool = thpool_init(1);
+	
 	/*2.启动mqtt*/
 	if(pthread_create(&tcp_th, NULL, mqtt_run, NULL) < 0)
     {
@@ -169,6 +173,13 @@ int main(int argc, char *argv[]) {
     	printlogf(LOG_ERR, "creating tcp thread failed! %s %s(%d)\n",FILE_NAME(__FILE__),__FUNCTION__,__LINE__);
         goto erro0;
     }
+	/*启动usb线程*/
+	if(pthread_create(&usb_th, NULL, open_usb_thread, NULL) < 0)
+    {
+    	printlogf(LOG_ERR, "creating usb thread failed! %s %s(%d)\n",FILE_NAME(__FILE__),__FUNCTION__,__LINE__);
+        goto erro0;
+    }
+
 	/*2.1订阅主题*/
 	ret=mqtt_subscribe(sub_topic);
 	if(ret){

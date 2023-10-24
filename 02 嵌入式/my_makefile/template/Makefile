@@ -2,7 +2,7 @@
 #Author:zhouBL
 #Version:
 #Description:
-#Others:reference https://blog.csdn.net/xiaoluoshan/article/details/78639961
+#Others:
 #created date:10/13/2023 6:42 下午
 #modified date:
 #*************************************************/
@@ -49,35 +49,24 @@ CFLAGS += -DLINUX -D_FEATURE_SUPPORT_SYSLOG_
 LDFLAGS= $(LIB_FLAGS)
 LDFLAGS += -lumdpperipheral -lumdp -lumdpcommon -lsqlite -lpthread  -lrt -lpaho-embed-mqtt3c -lpaho-embed-mqtt3cc -lm 
 
-#要编译的子目录
+
 SUBDIRS := third_lib mdtucom_dev mdtucom_application
-#获取项目根路径
 ROOT_DIR=$(shell pwd)
-#最终bin文件的名字，可以更改为自己需要的
 BIN=mqtt_test
-#目标文件所在的目录
-OBJS_DIR=debug/obj
-#bin文件所在的目录
-BIN_DIR=debug/bin
-#获取当前目录下的c文件集，放在变量CUR_SOURCE中
+OBJS_DIR=build/obj
+BIN_DIR=build/bin
 CUR_SOURCE=${wildcard *.c}
-#将对应的c文件名转为o文件后放在下面的CUR_OBJS变量中
-CUR_OBJS=${patsubst %.c, %.o, $(CUR_SOURCE)}
-#将以下变量导出到子shell中，本次相当于导出到子目录下的makefile中
+CUR_OBJS=$(addsuffix .o,$(addprefix $(ROOT_DIR)/$(OBJS_DIR)/,$(basename $(notdir $(CUR_SOURCE)))))
 export BIN OBJS_DIR BIN_DIR ROOT_DIR CFLAGS LDFLAGS
-#注意这里的顺序，需要先执行SUBDIRS最后才能是DEBUG
-all:$(SUBDIRS) $(CUR_OBJS) DEBUG
-#递归执行子目录下的makefile文件，这是递归执行的关键
+all:$(SUBDIRS) $(CUR_OBJS) BUILD
 $(SUBDIRS):ECHO
 	make -C $@
-DEBUG:ECHO
-#直接去debug目录下执行makefile文件
-	make -C debug
+BUILD:ECHO
+	make -C build
 ECHO:
 	@echo $(SUBDIRS)
-#将c文件编译为o文件，并放在指定放置目标文件的目录中即OBJS_DIR
-$(CUR_OBJS):%.o:%.c
-	$(CC) $(CFLAGS) -c $^ -o $(ROOT_DIR)/$(OBJS_DIR)/$@ 
+$(CUR_OBJS):$(ROOT_DIR)/$(OBJS_DIR)/%.o:%.c
+	$(CC) $(CFLAGS) -c $^ -o $@ 
 CLEAN:
 	@rm $(OBJS_DIR)/*.o
 	@rm -rf $(BIN_DIR)/*
