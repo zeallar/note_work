@@ -120,7 +120,7 @@
     "schedule": 30
   }
 }
-//to do at command
+//to do at command//配置文件，imei md5加密校验key再修改，否则忽略
 {
     "ac": "set",
     "op": "sn",
@@ -131,7 +131,7 @@
         "hver": 1
     }
 }
-//to do  at command
+//to do  at command//配置文件
 {
   "ac": "set",
   "op": "apn",
@@ -169,14 +169,14 @@
   "op": "link",
   "val": "7F00000000..." // 电表测试的 HEX 指令
 }
-//to do. what is logic?
+//to do. what is logic?//不做
 { "ac": "set", "op": "bin", "val": 0 }
 //to do 
 {
   "ac": "set",
   "op": "update",
   "val": {
-    "url": "http://xxxx:xx/xxx/xx.bin", //下载地址172.16.225.25/appname
+    "url": "http://xxxx:xx/xxx/xx.bin", //板子下载地址http://172.16.225.25/DT3400-SM_LEU_20230905_V012.bin;电脑测试下载地址47.97.104.4/DT3400-SM_LEU_20230905_V012.bin
     "ver": 2, //版本
     "model": "xxxx" // 型号
   }
@@ -186,6 +186,33 @@
 //to do 
 { "ac": "set", "op": "restore" }//恢复配置文件
 
+```
+
+
+
+测试json
+
+```json
+{
+"ac": "set",
+"op": "ntp",
+"val": {
+"interval": 60,
+"timezone": 8,
+"primary": "172.16.225.24",
+"second": "172.16.225.24"
+}
+}
+
+{
+    "ac": "set",
+    "op": "update",
+    "val": {
+        "url": "http://172.16.225.25/DT3400-SM_LEU_20230905_V012.bin",
+        "ver": 2,
+        "model": "xxxx"
+    }
+}
 ```
 
 
@@ -206,4 +233,14 @@ client id: test_ba9b06c3
 username: 794f1745
 password: 47390f94025257dd
 ```
+
+
+
+![image-20231026103413804](MDTU通讯协议.assets/image-20231026103413804.png)
+
+移动  删除 改名 
+
+shell参数分开
+
+校验位  crc32
 
