@@ -32,13 +32,13 @@
     "ip": "10.0.0.72",
     "apn": "CMIOTGDHZA.GD",
     "operator": "CHINA MOBILE(CMCC)",   // 运营商
-    "lteBands": "B2/B3",   // 支持的 LTE 频段
-    "lteStatus": "service available", // LTE 网络状态 //add to config
-    "txPower": 0,   // 发射功率 (dBm) 	//at 获取
-    "pCID": 0,      // network physical cell id
-    "cid": 0,       // Cell ID for the registered 3GPP system
+    "lteBands": "B2/B3",   // 支持的 LTE 频段 					 /*写死，配置文件中拿*/
+    "lteStatus": "service available", // LTE 网络状态 
+    "txPower": 0,   // 发射功率 (dBm) 							 /*at【AT+GTCCINFO?】 获取<txpwr>*/
+    "pCID": 0,      // network physical cell id 				/*猜测at【AT+GTCCINFO?】：<physicalcellId>*/
+    "cid": 0,       // Cell ID for the registered 3GPP system	/*猜测at【AT+GTCCINFO?】：<cellid>文档里面是int值,at命令却是str*/
     "mcc": "460",   // Mobile country code
-    "mnc": "00"     // Mobile network code
+    "mnc": "00"     // Mobile network code 
   }
 }
 
@@ -94,6 +94,15 @@
 }
 ```
 
+get不确定的地方
+
+```json
+// 基站附着信息
+txPower 	/*at【AT+GTCCINFO?】 获取<txpwr>*/
+pCID		/*猜测at【AT+GTCCINFO?】：<physicalcellId>*/
+cid			/*猜测at【AT+GTCCINFO?】：<cellid>文档里面是int值,at命令却是str。处理方法：设置为零*/
+```
+
 ### 参数配置
 
 ```json
@@ -127,11 +136,11 @@
     "val": {
         "model": "DT3400-SM",\\--
         "sn": "xxxx",\\--
-        "key": "b8e774f281c81e931b1f3a3a56ee5f42",\\--
+        "key": "b8e774f281c81e931b1f3a3a56ee5f42",\\--/*imei md5：238825094282ea6f071328b7b2a1b6aa*/
         "hver": 1
     }
 }
-//to do  at command//配置文件
+//读写配置文件？
 {
   "ac": "set",
   "op": "apn",
@@ -171,7 +180,7 @@
 }
 //to do. what is logic?//不做
 { "ac": "set", "op": "bin", "val": 0 }
-//to do 
+//to do //ok
 {
   "ac": "set",
   "op": "update",
@@ -190,6 +199,31 @@
 
 
 
+```json
+set不确定的地方
+//1、读写配置文件？
+{
+  "ac": "set",
+  "op": "apn",
+  "val": {
+    "name": "xxxx", // apn 名称\\--
+    "user": "xxxx", // 用户名\\--
+    "passwd": "xxxx" // 密码\\--
+  }
+}
+//2、时区是指cst 8？经测试时区改后无效
+{
+  "ac": "set",
+  "op": "ntp",
+  "val": {
+    "interval": 60, // 同步周期
+    "timezone": 8, // 时区
+    "primary": "172.16.225.24", // 主
+    "second": "172.16.225.24" // 副
+  }
+}
+```
+
 测试json
 
 ```json
@@ -203,12 +237,22 @@
 "second": "172.16.225.24"
 }
 }
-
+/*正确测试*/
 {
     "ac": "set",
     "op": "update",
     "val": {
-        "url": "http://172.16.225.25/DT3400-SM_LEU_20230905_V012.bin",
+        "url": "http://172.16.225.25/mqtt_test_v2_crc32_test_11_1.bin",
+        "ver": 2,
+        "model": "xxxx"
+    }
+}
+/*错误测试*/
+{
+    "ac": "set",
+    "op": "update",
+    "val": {
+        "url": "http://172.16.225.25/mqtt_test_v2_crc32_err_test_11_1.bin",
         "ver": 2,
         "model": "xxxx"
     }

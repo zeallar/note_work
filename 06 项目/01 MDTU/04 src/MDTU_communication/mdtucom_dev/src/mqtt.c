@@ -1,3 +1,11 @@
+/*************************************************
+Author:zhouBL
+Version:
+Description:mqtt类方法
+Others:
+created date:2023/11/7 3:21 下午
+modified date:
+*************************************************/
 #include <stdio.h>
 #include <signal.h>
 #include <sys/time.h>
@@ -6,6 +14,11 @@
 #include <time.h>
 #include <sys/timeb.h>
 #include <syslog.h>
+#define int32_t bf_int32_t
+#define uint32_t bf_uint32_t
+#include "app_api.h"
+#undef int32_t
+#undef uint32_t
 
 #include "MQTTLinux.h"
 #include "MQTTClient.h"
@@ -13,27 +26,33 @@
 #include "thpool.h"
 #include "SemaphoreWrapper.h"
 #include "com_utils.h"
-#include "app_api.h"
 #include "cJSON.h"
 #include "info_get.h"
 #include "info_set.h"
 #include "mqtt.h"
 #include "def_structs.h"
+#include "com_log.h"
+
+
+
 
 /*Semaphore variable,Main thread synchronization*/
 #define SEMNUM 0
-static int sem;
+static int32_t sem;
 /*mqtt variable*/
 Network n;
 MQTTClient c1;
-volatile int mqtt_connecting;
+
+volatile int32_t mqtt_connecting;
 extern threadpool op_thpool;
 
-volatile int mqtt_connecting=1;
-volatile int mqtt_running=1;
-static pthread_mutex_t mutex;
+volatile int32_t mqtt_connecting=1;
+volatile int32_t mqtt_running=1;
+static pthread_mutex_t mqtt_handler_mutex;
+extern uint32_t task_id;
+
 /*set info variable*/
-const char *SET_OP[] = {
+const int8_t *SET_OP[] = {
 	"serial",
 	"general",
 	"sn",
@@ -49,48 +68,78 @@ const char *SET_OP[] = {
 
 /*def struct*/
 struct mqtt_subscribe_t{
-	char* topic;
+	int8_t* topic;
 	void (*callback)(MessageData* md);
 	struct mqtt_subscribe_t* next;
 };
 struct mqtt_publish_t{
-	char* topic;
-	char* mes;
+	uint32_t task_id;
+	int8_t* topic;
+	int8_t* mes;
 	struct mqtt_publish_t* next;
 };
 static struct mqtt_subscribe_t *subscribe_list=NULL;
 static struct mqtt_publish_t *publish_list=NULL;
 
 
-int run_sub_pub();
+int32_t run_sub_pub();
 void message_arrived_handler(MessageData* md);
-void doit(char *text);
-
+void doit(void* dpt);
+/*mqtt回调函数*/
 void message_arrived_handler(MessageData* md)
 {
-	pthread_mutex_lock(&mutex); 
+	pthread_mutex_lock(&mqtt_handler_mutex); 
 	MQTTMessage* message = md->message;
-	printlogf(LOG_NOTICE,"%.*s\n", md->topicName->lenstring.len, md->topicName->lenstring.data);
-	printlogf(LOG_NOTICE,"%.*s\n", (int)message->payloadlen, (char*)message->payload);
+	LOGC(LOG_NOTICE,"%.*s", md->topicName->lenstring.len, md->topicName->lenstring.data);
+	LOGC(LOG_NOTICE,"%.*s", (int32_t)message->payloadlen, (int8_t*)message->payload);
 	/*parse json*/
-	char val[(int)message->payloadlen];
-	sprintf(val,"%.*s",(int)message->payloadlen,(char*)message->payload);
-	doit(val);
-	pthread_mutex_unlock(&mutex);
+	struct thread_info_transmit_t *s=MDTU_COM_MALLOC_STRUCT(thread_info_transmit_t);
+
+	s->task_id=task_id++;
+	sprintf(s->json_text,"%.*s",(int32_t)message->payloadlen,(int8_t*)message->payload);
+	s->flag=0;
+	
+	list_node_t *list_node_s = list_node_new(s);
+	list_rpush(task_list, list_node_s);
+	
+	doit(s);
+	pthread_mutex_unlock(&mqtt_handler_mutex);
 }
 /* Parse text to JSON, then render back to text, and to exec function! */
-void doit(char *text)
+/*falg 0:mqtt,1:tcp server 2:usb linked*/
+/*根据接收到的shell或json，执行相应的操作*/
+void doit(void* ti)
 {
-	char *out;cJSON *json=NULL,*value=NULL;
-
-	
-	json=cJSON_Parse(text);
+	struct thread_info_transmit_t *s=(struct thread_info_transmit_t *)ti;
+	//LOGC(LOG_NOTICE,"doit s->task_id=%d",s->task_id);
+	int8_t *out;cJSON *json=NULL,*value=NULL;
+	list_node_t *list_node_s= list_find(task_list, &(s->task_id));
+	json=cJSON_Parse(s->json_text);
 	if (!json) {
-		printlogf(LOG_NOTICE,"json parse failure before: %s\n",cJSON_GetErrorPtr());
+		s->data_type=1;
+		//LOGC(LOG_NOTICE,"json parse failure before: %s go to shell execute",cJSON_GetErrorPtr());
+		if(strstr(s->json_text,"not found")!=NULL||strstr(s->json_text,"can't")!=NULL){
+			list_remove(task_list,list_node_s);
+			goto end;
+		}
+		switch(s->flag){
+			case 0:
+				thpool_add_work(op_thpool, shell_op, (void*)s);
+				break;
+			case 1:
+				thpool_add_work(op_thpool, shell_op, (void*)s);
+				break;
+			case 2:
+				thpool_add_work(op_thpool, shell_op, (void*)s);
+				break;
+			default:
+			;
+		}
 		goto end;
 	}
 	else
-	{	
+	{
+		s->data_type=0;
 		value = cJSON_GetObjectItem(json,"ac");
 		out=cJSON_Print(value);
 	}
@@ -101,35 +150,37 @@ void doit(char *text)
 		if (cJSON_GetObjectItem(json, "code") != NULL){
 				goto end;
 			}
-		int *val=(int*)malloc(sizeof(int));
+		int32_t *val=(int32_t*)malloc(sizeof(int32_t));
 		*val=atoi(out);
+		s->code=*val;
 		switch(*val){
 			case 0:/*基础信息*/
 			{	
 				/*获取信息*/
-				thpool_add_work(op_thpool, get_base_info, (void*)(val));
+				thpool_add_work(op_thpool, get_base_info, (void*)(s));
 				break;
 			}
 			case 1:/*基站附着信息*/
-				thpool_add_work(op_thpool, get_base_station_info,(void*)(val));
+				thpool_add_work(op_thpool, get_base_station_info,(void*)(s));
 				break;
 			case 2:/*信号参数*/
-				thpool_add_work(op_thpool, get_signal_param,(void*)(val));
+				thpool_add_work(op_thpool, get_signal_param,(void*)(s));
 				break;
 			case 3:/*串口信息*/
-				thpool_add_work(op_thpool, get_serial_info,(void*)(val));
+				thpool_add_work(op_thpool, get_serial_info,(void*)(s));
 				break;
 			case 4:/*扩展信息*/
-				thpool_add_work(op_thpool, get_extra_info,(void*)(val));
+				thpool_add_work(op_thpool, get_extra_info,(void*)(s));
 				break;
 			case 5:/*APN 配置信息*/
-				thpool_add_work(op_thpool, get_apn_config,(void*)(val));
+				thpool_add_work(op_thpool, get_apn_config,(void*)(s));
 				break;
 			case 6:/*ntp 配置信息*/
-				thpool_add_work(op_thpool, get_ntp_config,(void*)(val));
+				thpool_add_work(op_thpool, get_ntp_config,(void*)(s));
 				break;
 			default:
-				;
+				list_remove(task_list,list_node_s);
+				break;
 		}
 		//cJSON_Delete(json);
 	}/*set info*/
@@ -137,57 +188,62 @@ void doit(char *text)
 		value = cJSON_GetObjectItem(json,"op");
 		out=cJSON_Print(value);
 		remove_double_quotation_marks(out);
-		int j;
+		int32_t j;
 		for(j=0;SET_OP[j];j++){
 			if(!strncmp(out,SET_OP[j],strlen(SET_OP[j])))
 				break;
 		}
 		switch(j){
 			case 0:/*serial*/
-				thpool_add_work(op_thpool, set_serial_info, (void*)json);
+				thpool_add_work(op_thpool, set_serial_info, (void*)s);
 				break;
 			case 1:/*general*/
-				thpool_add_work(op_thpool, set_general_info, (void*)json);
+				thpool_add_work(op_thpool, set_general_info, (void*)s);
 				break;
 			case 2:/*sn*/
-				thpool_add_work(op_thpool, set_sn_info, (void*)json);
+				thpool_add_work(op_thpool, set_sn_info, (void*)s);
 				break;
 			case 3:/*apn*/
 				/*use at commant can't set success or can't find suitable at command*/
+				thpool_add_work(op_thpool, set_apn_info, (void*)s);
 				break;
 			case 4:/*ntp*/
-				thpool_add_work(op_thpool, set_ntp_info, (void*)json);
+				thpool_add_work(op_thpool, set_ntp_info, (void*)s);
 				break;
 			case 5:/*snmp*/
 				break;
 			case 6:/*link*/
 				break;
 			case 7:/*update*/
+				thpool_add_work(op_thpool, set_update_info, (void*)s);
 				break;
 			case 8:/*restart*/
-				thpool_add_work(op_thpool, set_restart_info, (void*)json);
+				thpool_add_work(op_thpool, set_restart_info, (void*)s);
 				break;
 			case 9:/*restore*/
+				thpool_add_work(op_thpool, set_restore_info, (void*)s);
 				break;
 			default:
-				;
+				list_remove(task_list,list_node_s);
+				break;
 			
 		}
 	}
 	//cJSON_Delete(json);
 	end:
-		//free(out);
-		;
+	//free(out);
+	;
 }
-
+/*启动mqtt*/
 void* mqtt_run()
 {	
-	int ret;
-	pthread_mutex_init(&mutex, NULL);/*mqtt接收处理函数互斥量*/
-
-	static unsigned char sendbuf[1024];
-	static unsigned char readbuf[1024];
-	unsigned int  command_timeout_ms = 1000;
+	int32_t ret;
+	pthread_mutex_init(&mqtt_handler_mutex, NULL);/*mqtt接收处理函数互斥量*/
+	
+	
+	static uint8_t sendbuf[1024];
+	static uint8_t readbuf[1024];
+	uint32_t  command_timeout_ms = 1000;
 	static MQTTPacket_connectData mqtt_data= MQTTPacket_connectData_initializer;
 	
     mqtt_data.willFlag = 0;
@@ -204,7 +260,7 @@ void* mqtt_run()
 	if(!ret){
 		mqtt_connecting=0;		
 	}
-	int sem_ret;
+	int32_t sem_ret;
 	/*semaphore init*/
 	sem = semCreate_new(123456, 1);
 	semSetValue(sem, SEMNUM, 1);/*set init value*/
@@ -212,22 +268,23 @@ void* mqtt_run()
 	{	
 		sem_ret = semGetValue(sem, SEMNUM);
 		if(DebugOpt)
-			printlogf(LOG_NOTICE,"sem=%d\n!\n",sem_ret);
+			LOGC(LOG_NOTICE,"sem=%d\n!",sem_ret);
 		run_sub_pub();
 		MQTTYield(&c1, 1000);//maintain the mqtt connection
 	}
 	
 }
-int run_sub_pub(){
+/*执行订阅和发布任务*/
+int32_t run_sub_pub(){
 	semWait(sem, SEMNUM);/*p operation*/
-	int ret;
+	int32_t ret;
 	struct mqtt_subscribe_t *sub_ptr, *sub_tmp;
 	for (sub_ptr = subscribe_list; sub_ptr != NULL; sub_ptr = sub_tmp) {
 		sub_tmp = sub_ptr->next;
 		ret = MQTTSubscribe(&c1, sub_ptr->topic,QOS2,sub_ptr->callback);
 		if(ret){
-			printlogf(LOG_ERR,"MQTTSubscribe  ret %d\n", ret);
-			printlogf(LOG_ERR, "%s %s(%d)\n",FILE_NAME(__FILE__),__FUNCTION__,__LINE__);
+			LOGC(LOG_ERR,"MQTTSubscribe  ret %d", ret);
+			ret=-1;
 		}
 		free(sub_ptr);
 	  } 
@@ -245,26 +302,29 @@ int run_sub_pub(){
 	    message.dup = 0;
 		ret = MQTTPublish(&c1,pub_ptr->topic, &message);
 		if(ret){
-			printlogf(LOG_ERR,"MQTTPublish  ret %d\n", ret);
-			printlogf(LOG_ERR, "%s %s(%d)\n",FILE_NAME(__FILE__),__FUNCTION__,__LINE__);
+			LOGC(LOG_ERR,"MQTTPublish  ret %d", ret);
+			
+			LOGC(LOG_NOTICE,"MQTTPublish  ret %d mes %s", ret,pub_ptr->mes);
 		}
-		//printlogf(LOG_NOTICE,"MQTTPublish  ret %d mes %s\n", ret,pub_ptr->mes);
+		list_node_t *list_node_s = list_find(task_list, &(pub_ptr->task_id));
+		list_remove(task_list,list_node_s);
 		free(pub_ptr);
+		//free(list_node_s->val);
 	  }
 	 publish_list = NULL;
 	semIncrement(sem, SEMNUM, 1);/*v operation*/
 	return ret;
 	
 }
-
-int mqtt_subscribe(char* topic){
+/*订阅*/
+int32_t mqtt_subscribe(int8_t* topic){
 	semWait(sem, SEMNUM);/*p operation*/
 	struct mqtt_subscribe_t **s;
 	for(s=&(subscribe_list);(*s)!=NULL;s=&((*s)->next));
 	*s=MDTU_COM_MALLOC_STRUCT(mqtt_subscribe_t);
 	if (*s == NULL) {
-		printlogf(LOG_ERR,"don't have enough memory!\n");
-		printlogf(LOG_ERR, "%s %s(%d)\n",FILE_NAME(__FILE__),__FUNCTION__,__LINE__);
+		LOGC(LOG_ERR,"don't have enough memory!");
+		return -1;
 	}
 	(*s)->topic=topic;
 	(*s)->callback=message_arrived_handler;
@@ -272,42 +332,44 @@ int mqtt_subscribe(char* topic){
 	semIncrement(sem, SEMNUM, 1);/*v operation*/
 	return 0;
 }
-
-int mqtt_publish(char* topic,char* mes){
-
+/*发布*/
+int32_t mqtt_publish(int8_t* topic,void* _s){
+	int32_t ret=0;
+	struct thread_info_transmit_t *tit_s=(struct thread_info_transmit_t *)_s;
 	semWait(sem, SEMNUM);/*p operation*/
 	struct mqtt_publish_t **s;
 	for(s=&(publish_list);(*s)!=NULL;s=&((*s)->next));
 	*s=MDTU_COM_MALLOC_STRUCT(mqtt_publish_t);
 	if (*s == NULL) {
-		printlogf(LOG_ERR,"don't have enough memory!\n");
-		printlogf(LOG_ERR, "%s %s(%d)\n",FILE_NAME(__FILE__),__FUNCTION__,__LINE__);
+		LOGC(LOG_ERR,"don't have enough memory!");
+		ret=-1;
 	}
 	(*s)->topic=topic;
-	(*s)->mes=mes;
+	(*s)->mes=tit_s->json_text;
+	(*s)->task_id=tit_s->task_id;
 	(*s)->next=NULL;
 	semIncrement(sem, SEMNUM, 1);/*v operation*/
-	return 0;
+	return ret;
 }
-
-int mqtt_unsubscribe(char* topic){
-	int ret;
+/*取消订阅*/
+int32_t mqtt_unsubscribe(int8_t* topic){
+	int32_t ret;
 	ret = MQTTUnsubscribe(&c1, topic);
 	if(ret){
-		printlogf(LOG_ERR,"MQTTUnsubscribe  ret %d\n", ret);
-		printlogf(LOG_ERR, "%s %s(%d)\n",FILE_NAME(__FILE__),__FUNCTION__,__LINE__);
+		LOGC(LOG_ERR,"MQTTUnsubscribe  ret %d", ret);
+		
 	}
 	return ret;
 }
-
+/*mqtt清理*/
 void mqtt_thread_stop(){
 	/*close mqtt*/
 	thpool_wait(op_thpool);
 	thpool_destroy(op_thpool);
 	mqtt_running=0;
-	pthread_mutex_destroy(&mutex);
+	pthread_mutex_destroy(&mqtt_handler_mutex);
 	MQTTDisconnect(&c1);
     NetworkDisconnect(&n);
-	printlogf(LOG_NOTICE,"mqtt thread disconnected!\n");
+	LOGC(LOG_NOTICE,"mqtt thread disconnected!");
 }
 

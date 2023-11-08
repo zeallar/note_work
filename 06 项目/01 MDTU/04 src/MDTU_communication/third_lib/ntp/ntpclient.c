@@ -415,10 +415,10 @@ static int rfc1305print(u32 *data, struct ntptime *arrival, struct ntp_control *
 			el_time+sec2u(disp), freq);
 		if (!debug && new_freq != freq) set_freq(new_freq);
 	}
-	printf("%d %.5d.%.3d  %8.1f %8.1f  %8.1f %8.1f %9d\n",
+	/*printf("%d %.5d.%.3d  %8.1f %8.1f  %8.1f %8.1f %9d\n",
 		arrival->coarse/86400, arrival->coarse%86400,
 		arrival->fine/4294967, el_time, st_time,
-		(skew1-skew2)/2, sec2u(disp), freq);
+		(skew1-skew2)/2, sec2u(disp), freq);*/
 	fflush(stdout);
 	*error = el_time-st_time;
 
@@ -639,7 +639,7 @@ void ntp_operate(char * hos)
 		ntpc.cycle_time = MIN_INTERVAL;
 	}
  
-		printf("Configuration:\n"
+		/*printf("Configuration:\n"
 		"  -c probe_count %d\n"
 		"  -d (debug)     %d\n"
 		"  -g goodness    %d\n"
@@ -652,7 +652,7 @@ void ntp_operate(char * hos)
 		"  -x cross_check %d\n",
 		ntpc.probe_count, debug, ntpc.goodness,
 		hostname, ntpc.cycle_time, ntpc.live, udp_local_port, min_delay,
-		ntpc.set_clock, ntpc.cross_check );
+		ntpc.set_clock, ntpc.cross_check );*/
  
 	/* Startup sequence */
 	if ((usd=socket(AF_INET,SOCK_DGRAM,IPPROTO_UDP))==-1)

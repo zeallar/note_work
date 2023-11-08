@@ -27,6 +27,10 @@ INC_PATHS := \
 	${MDTUBASE}/mdtucom_dev/include \
 	${MDTUBASE}/third_lib/cjson \
 	${MDTUBASE}/third_lib/ini \
+	${MDTUBASE}/third_lib/list \
+	${MDTUBASE}/third_lib/cronexpr \
+	${MDTUBASE}/third_lib/md5 \
+	${MDTUBASE}/third_lib/uriparser \
 	${MDTUBASE}/third_lib/ntp \
 	${MDTUBASE}/third_lib/semaphore \
 	${MDTUBASE}/third_lib/thpool \
@@ -49,24 +53,23 @@ CFLAGS += -DLINUX -D_FEATURE_SUPPORT_SYSLOG_
 LDFLAGS= $(LIB_FLAGS)
 LDFLAGS += -lumdpperipheral -lumdp -lumdpcommon -lsqlite -lpthread  -lrt -lpaho-embed-mqtt3c -lpaho-embed-mqtt3cc -lm 
 
-
 SUBDIRS := third_lib mdtucom_dev mdtucom_application
 ROOT_DIR=$(shell pwd)
 BIN=mqtt_test
-OBJS_DIR=debug/obj
-BIN_DIR=debug/bin
+OBJS_DIR=build/obj
+BIN_DIR=build/bin
 CUR_SOURCE=${wildcard *.c}
-CUR_OBJS=${patsubst %.c, %.o, $(CUR_SOURCE)}
+CUR_OBJS=$(addsuffix .o,$(addprefix $(ROOT_DIR)/$(OBJS_DIR)/,$(basename $(notdir $(CUR_SOURCE)))))
 export BIN OBJS_DIR BIN_DIR ROOT_DIR CFLAGS LDFLAGS
-all:$(SUBDIRS) $(CUR_OBJS) DEBUG
+all:$(SUBDIRS) $(CUR_OBJS) BUILD
 $(SUBDIRS):ECHO
 	make -C $@
-DEBUG:ECHO
-	make -C debug
+BUILD:ECHO
+	make -C build
 ECHO:
 	@echo $(SUBDIRS)
-$(CUR_OBJS):%.o:%.c
-	$(CC) $(CFLAGS) -c $^ -o $(ROOT_DIR)/$(OBJS_DIR)/$@ 
+$(CUR_OBJS):$(ROOT_DIR)/$(OBJS_DIR)/%.o:%.c
+	$(CC) $(CFLAGS) -c $^ -o $@ 
 CLEAN:
 	@rm $(OBJS_DIR)/*.o
 	@rm -rf $(BIN_DIR)/*

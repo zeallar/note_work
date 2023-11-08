@@ -1,0 +1,307 @@
+# lib
+
+## 1、http下载文件
+
+https://www.cnblogs.com/zhuangquan/p/17086924.html
+
+### 2、日志文件
+
+https://www.cnblogs.com/macrored/p/11458027.html
+
+```c
+#include <stdio.h>
+#include <fcntl.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <pwd.h>
+#include <time.h>
+#include <signal.h>
+#include <sys/stat.h>
+#include <string.h>
+#include <errno.h>
+#include "com_log.h"
+#include <stdarg.h>
+#include "app_api.h"
+
+#include <limits.h>  /* PATH_MAX */
+#include "com_update.h"
+
+
+char *daemon_log = "/var/log/daemon.log";
+
+#define LOGC(type, format, ...) logC(__func__, __FILE__, __LINE__, type, format, ##__VA_ARGS__)
+
+int is_daemon = 1;
+int is_root = 1;
+
+ void logC(const char *func, const char *file, const int line,
+		   const char *type, const char *format, ...)
+ {
+	 FILE *file_fp;
+	 time_t loacl_time;
+	 char time_str[128];
+ 
+	 // 获取本地时间
+	 time(&loacl_time);
+	 strftime(time_str, sizeof(time_str), "[%Y.%m.%d %X]", localtime(&loacl_time));
+	 
+	 // 日志内容格式转换
+	 va_list ap;
+	 va_start(ap, format);
+	 char fmt_str[2048];
+	 vsnprintf(fmt_str, sizeof(fmt_str), format, ap);
+	 va_end(ap);
+ 
+	 // 打开日志文件
+	 file_fp = fopen(daemon_log, "a");
+	 
+	 // 写入到日志文件中
+	 if (file_fp != NULL)
+	 {
+		 fprintf(file_fp, "[%s]%s[%s@%s:%d] %s\n", type, time_str, func, 
+				 file, line, fmt_str);
+		 fclose(file_fp);
+	 }
+	 else
+	 {
+		 fprintf(stderr, "[%s]%s[%s@%s:%d] %s\n", type, time_str, func, 
+				 file, line, fmt_str);
+	 }
+ }
+
+ 
+int daemon(int nochdir, int noclose)
+{
+	int fd, ret;
+	ret = fork();
+
+	switch (ret) {
+		case -1: 	//error happend
+			return -1;
+		case 0: 	//child pid
+			{
+			
+			break;
+		}
+			
+		default:	//parent exit 
+			/*close resource*/
+			exit(1);
+	}
+	//child continues
+	
+	if (setsid() == -1)
+		return -1;
+	if (nochdir == 0) {
+		if(chdir("/") != 0) {
+			perror("chdir");
+			return -1;
+		}
+	}
+	if (noclose == 0 && (fd = open("/dev/null", O_RDWR, 0)) != -1) {
+		if(dup2(fd, STDIN_FILENO) < 0) {
+			perror("dup2 stdin");
+			return -1;
+		}
+		if(dup2(fd, STDOUT_FILENO) < 0) {
+			perror("dup2 stdout");
+			return -1;
+		}
+		if(dup2(fd, STDERR_FILENO) < 0) {
+			perror("dup2 stderr");
+			return -1;
+		}
+		if (fd > STDERR_FILENO) {
+			if(close(fd) < 0) {
+				perror("close");
+				return -1;
+			}
+		}
+	}
+	return 0;
+}
+ 
+void sig_handler(int sig)
+{
+	if (sig == SIGCHLD) {  
+		int status;
+		pid_t pid;
+		pid = wait(&status);
+	}
+}
+int copy_by_fileIO(const char *dest_file_name, const char *src_file_name) {//OK
+	
+	FILE *file=fopen(dest_file_name,"w");
+	if(file==NULL){
+		LOGC("LOG_ERR","can't open destination file fd1:!");
+		return -1;
+	}
+	LOGC("LOG_NOTICE","destination file has been clean fd1:!");
+	int fd1 = open(dest_file_name,O_WRONLY|O_CREAT|O_APPEND,0766);
+    if(fd1 == -1) {
+		LOGC("LOG_ERR", "fd1:");
+        return -1;
+    }
+    int fd2 = open(src_file_name,O_RDONLY|S_IROTH);
+    if(fd2 == -1) {
+		LOGC("LOG_ERR", "fd2:");
+        return -1;
+    }
+    char *buffer = (char *)malloc(2 * sizeof(char));
+    int ans = 0;
+    int k;
+    do{
+        memset(buffer,0,sizeof(buffer));
+        k = read(fd2,buffer,1);
+        if(k <= 0) break;
+        write(fd1,buffer,1);
+        //printf("k = %d\tbuffer = %s\n",k,buffer);
+        ans++;
+    }while(k > 0);
+    close(fd1);
+    close(fd2);
+    return 0;
+}
+
+
+//防止被信号中断
+void restart_sleep(int sec)
+{
+    int left;
+    left = sec;
+    while (left > 0) {
+        left = sleep(left);
+    }
+}
+
+ /*------------auto update---------------------*/
+/*读取当前程序路径*/
+int autoupdate_exepath(char* buffer, size_t* size) {
+  ssize_t n;
+
+  if (buffer == NULL || size == NULL || *size == 0)
+    return -1;
+
+  n = *size - 1;
+  if (n > 0)
+    n = readlink("/proc/self/exe", buffer, n);
+
+  if (n == -1)
+    return -1;
+
+  buffer[n] = '\0';
+  *size = n;
+
+  return 0;
+}
+
+int update_operation2(){
+	int ret;
+	char* tmpdir=TEMP_IMAGE_SAVE;
+	
+	// chmod
+	size_t exec_path_len = 2 * PATH_MAX;
+	//char* exec_path = (char*)(malloc(exec_path_len));
+	char* exec_path=CUR_APP_PATH;
+	LOGC("LOG_NOTICE", "exec_path:%s",exec_path);
+	LOGC("LOG_NOTICE", "tmpdir:%s",tmpdir);
+	if(NULL == exec_path){
+		printlogf(LOG_ERR,"malloc  exec_path\n");
+		return -1;
+	}
+	autoupdate_exepath(exec_path, &exec_path_len);
+	struct stat current_st;
+	ret = stat(exec_path, &current_st);
+	ret = chmod(tmpdir, current_st.st_mode | S_IXUSR);
+	LOGC("LOG_NOTICE", "chmod:%d",ret);
+	ret = rename(tmpdir, exec_path);
+	LOGC("LOG_NOTICE", "rename:%d",ret);
+	if(!ret){
+	ret = execv(exec_path, wargv);
+	LOGC("LOG_NOTICE", "execv:%d",ret);
+	}
+	return ret;
+}
+int update_operation3(){
+	int ret;
+	//char* tmpdir="/bin/crc32";
+	char* tmpdir=TEMP_IMAGE_SAVE;
+	char* exec_path=CUR_APP_PATH;
+	LOGC("LOG_NOTICE", "exec_path:%s",exec_path);
+	LOGC("LOG_NOTICE", "tmpdir:%s",tmpdir);
+	
+	struct stat current_st;
+	ret = stat(exec_path, &current_st);
+	ret = chmod(tmpdir, current_st.st_mode | S_IXUSR);
+	ret = rename(tmpdir, exec_path);
+	LOGC("LOG_NOTICE", "rename:%d",ret);
+	printlogf(LOG_NOTICE, "rename ret:%d,reason:%s\n", ret,strerror(errno));
+	if(ret){
+	printlogf(LOG_ERR, "rename failed,reason:%s\n", strerror(errno));
+	LOGC("LOG_NOTICE", "rename failed,reason:%s\n", strerror(errno));
+	LOGC("LOG_NOTICE", "rename:%d",ret);
+	return;
+	}
+	ret = execv(exec_path, wargv);
+	return ret;
+}
+
+/*---------------------*/
+int update_operation()
+{
+	fprintf(stdout, "daemon start!\n");	
+	int ret;
+
+	//防止僵死子进程
+	struct sigaction sa, oldsa;
+	sa.sa_handler = sig_handler;
+	sigemptyset(&sa.sa_mask);
+	sa.sa_flags = SA_RESTART;
+	if (sigaction(SIGCHLD, &sa, &oldsa) == -1) {
+		fprintf(stderr, "sigaction(SIGCHLD) error/n");
+		return 1;
+	}
+	//切换到守护进程
+	if (is_daemon) {
+		ret = daemon(1, 0);
+		if (ret == -1) {
+			fprintf(stderr, "failed to daemon/n");
+			return 1;
+		}
+	}
+ 
+	/**
+	 * do something
+	 */
+
+	 /*更新文件*/
+	 /*
+	ret=copy_by_fileIO(CUR_APP_PATH,TEMP_IMAGE_SAVE);
+	if(ret){
+		LOGC("LOG_ERR", "app update failed!");
+		return -1;
+	}
+	LOGC("LOG_NOTICE", "app update success!");
+	*/
+	update_operation2();
+	/*启动更新后的app*/
+	
+	/**
+	 * end
+	 */
+}
+
+
+
+```
+
+
+
+### 3、更新实现(可借鉴日志实现)
+
+https://github.com/pmq20/libautoupdate
+
+### 4、守护进程
+
+https://blog.csdn.net/xinyuan510214/article/details/50903280/
+
